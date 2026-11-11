@@ -130,6 +130,7 @@ fn refresh_service_ui(ui: &AppWindow) {
     let info = service::status();
     ui.set_service_running(info.state.is_running());
     ui.set_service_installed(service::is_installed());
+    ui.set_autostart_enabled(info.autostart);
     ui.set_service_text(format!("{} — {}", info.state.label(), info.detail).into());
 }
 
@@ -243,6 +244,40 @@ fn wire_callbacks(ui: &AppWindow, config: Rc<RefCell<Config>>, model: Rc<VecMode
             match service::uninstall() {
                 Ok(message) => ui.set_message(message.into()),
                 Err(err) => ui.set_message(format!("Uninstall failed: {err}").into()),
+            }
+            refresh_service_ui(&ui);
+        }
+    });
+
+    // Flip auto-start. Enabling on a machine with no service yet installs it
+    // first, so a single click is enough; disabling just removes it from the
+    // boot transaction and leaves the service installed but manual.
+    ui.on_set_autostart({
+        let ui_weak = ui.as_weak();
+        let config = config.clone();
+        let model = model.clone();
+        move |enabled| {
+            let Some(ui) = ui_weak.upgrade() else { return };
+
+            if enabled && !service::is_installed() {
+                let cfg = match save_from_ui(&ui, &config, &model) {
+                    Ok(cfg) => cfg,
+                    Err(err) => {
+                        ui.set_message(format!("Save failed: {err}").into());
+                        refresh_service_ui(&ui);
+                        return;
+                    }
+                };
+                if let Err(err) = service::install(&cfg) {
+                    ui.set_message(format!("Install failed: {err}").into());
+                    refresh_service_ui(&ui);
+                    return;
+                }
+            }
+
+            match service::set_autostart(enabled) {
+                Ok(message) => ui.set_message(message.into()),
+                Err(err) => ui.set_message(format!("Auto-start failed: {err}").into()),
             }
             refresh_service_ui(&ui);
         }

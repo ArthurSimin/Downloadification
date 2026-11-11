@@ -57,6 +57,10 @@ enum Commands {
     Install,
     /// Remove the background service
     Uninstall,
+    /// Start the background service automatically at boot / login
+    Enable,
+    /// Stop starting the background service automatically at boot / login
+    Disable,
     /// Show configuration and service status
     Status,
     /// Diagnose common problems
@@ -92,6 +96,8 @@ fn main() {
         Commands::Daemon => run_daemon(config),
         Commands::Install => install(&config),
         Commands::Uninstall => uninstall(),
+        Commands::Enable => set_autostart(&config, true),
+        Commands::Disable => set_autostart(&config, false),
         Commands::Status => status(&config, cli.json),
         Commands::Doctor => doctor(&config),
         Commands::Path => println!("{}", config_path(&cli).display()),
@@ -187,6 +193,24 @@ fn uninstall() {
     watcher::clear_heartbeat();
 }
 
+/// Turn auto-start on or off. Enabling on a machine with no service yet
+/// installs it first, so a single command is enough.
+fn set_autostart(config: &Config, enabled: bool) {
+    if enabled && !service::is_installed() {
+        if let Err(err) = service::install(config) {
+            eprintln!("error: could not install the service: {err}");
+            std::process::exit(1);
+        }
+    }
+    match service::set_autostart(enabled) {
+        Ok(message) => println!("{message}"),
+        Err(err) => {
+            eprintln!("error: {err}");
+            std::process::exit(1);
+        }
+    }
+}
+
 fn status(config: &Config, json: bool) {
     let target = config.target_path();
     let categories = config.categories();
@@ -195,7 +219,7 @@ fn status(config: &Config, json: bool) {
 
     if json {
         println!(
-            "{{\"version\":\"{}\",\"config\":\"{}\",\"target\":\"{}\",\"target_exists\":{},\"categories\":{},\"service\":\"{}\",\"running\":{},\"dry_run\":{}}}",
+            "{{\"version\":\"{}\",\"config\":\"{}\",\"target\":\"{}\",\"target_exists\":{},\"categories\":{},\"service\":\"{}\",\"running\":{},\"autostart\":{},\"dry_run\":{}}}",
             paths::VERSION,
             escape(&config_path_str()),
             escape(&target.display().to_string()),
@@ -203,6 +227,7 @@ fn status(config: &Config, json: bool) {
             categories.categories.len(),
             info.state.label(),
             info.state.is_running(),
+            info.autostart,
             config.dry_run
         );
         return;
@@ -218,6 +243,16 @@ fn status(config: &Config, json: bool) {
     println!("  Categories  : {}", categories.categories.len());
     println!("  Dry-run     : {}", config.dry_run);
     println!("  Service     : {} — {}", info.state.label(), info.detail);
+    if service::is_installed() {
+        println!(
+            "  Auto-start  : {}",
+            if info.autostart {
+                "enabled (starts at boot / login)"
+            } else {
+                "disabled (starts only when launched manually)"
+            }
+        );
+    }
     match heartbeat {
         Some(age) => println!("  Heartbeat   : {}s ago", age.as_secs()),
         None => println!("  Heartbeat   : none (daemon not running)"),
@@ -269,6 +304,13 @@ fn doctor(config: &Config) {
 
     let info = service::status();
     println!("  [info] service: {} — {}", info.state.label(), info.detail);
+    if service::is_installed() {
+        if info.autostart {
+            println!("  [ok]   auto-start is enabled (runs at boot / login)");
+        } else {
+            println!("  [info] auto-start is disabled (runs only when launched manually)");
+        }
+    }
     if info.state.is_running() {
         println!("  [ok]   daemon heartbeat is fresh");
     } else {

@@ -163,9 +163,85 @@ pub(super) fn detail() -> String {
     }
 }
 
+/// Interpret the single token `systemctl --user is-enabled` prints.
+///
+/// The tokens are stable English identifiers, so this is not affected by the
+/// user's locale (`LANG`), unlike the human readable `status` output.
+fn parse_is_enabled(stdout: &str) -> bool {
+    matches!(
+        stdout.trim(),
+        "enabled" | "enabled-runtime" | "linked" | "linked-runtime" | "alias" | "indirect"
+    )
+}
+
+pub(super) fn is_autostart_enabled() -> bool {
+    if unit_path().exists() {
+        Command::new("systemctl")
+            .args(["--user", "is-enabled", UNIT_NAME])
+            .output()
+            .map(|out| parse_is_enabled(&String::from_utf8_lossy(&out.stdout)))
+            .unwrap_or(false)
+    } else {
+        // The XDG autostart entry only exists while auto-start is wanted.
+        autostart_path().exists()
+    }
+}
+
+pub(super) fn set_autostart(enabled: bool) -> Result<String, String> {
+    if unit_path().exists() {
+        let verb = if enabled { "enable" } else { "disable" };
+        let output = Command::new("systemctl")
+            .args(["--user", verb, UNIT_NAME])
+            .output()
+            .map_err(|e| format!("could not run systemctl: {e}"))?;
+        if !output.status.success() {
+            return Err(format!(
+                "systemctl {verb} failed: {}",
+                String::from_utf8_lossy(&output.stderr).trim()
+            ));
+        }
+        info!("{verb}d systemd user unit {UNIT_NAME}");
+        return Ok(if enabled {
+            "Auto-start enabled: the service starts at boot.".to_string()
+        } else {
+            "Auto-start disabled: the service stays installed but will not start at boot."
+                .to_string()
+        });
+    }
+
+    // XDG autostart fallback: the entry itself is the auto-start mechanism.
+    if enabled {
+        let bin = paths::daemon_binary();
+        let bin_str = bin.to_string_lossy().to_string();
+        paths::ensure_dir(&autostart_dir()).map_err(|e| e.to_string())?;
+        std::fs::write(autostart_path(), autostart_contents(&bin_str))
+            .map_err(|e| e.to_string())?;
+        Ok(format!(
+            "Auto-start enabled (XDG autostart entry at {}).",
+            autostart_path().display()
+        ))
+    } else if autostart_path().exists() {
+        std::fs::remove_file(autostart_path()).map_err(|e| e.to_string())?;
+        Ok("Auto-start disabled (removed the XDG autostart entry).".to_string())
+    } else {
+        Ok("The service is not installed, so there is nothing to disable.".to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn is_enabled_token_parsing() {
+        assert!(parse_is_enabled("enabled\n"));
+        assert!(parse_is_enabled("enabled-runtime"));
+        assert!(parse_is_enabled("alias"));
+        assert!(!parse_is_enabled("disabled\n"));
+        assert!(!parse_is_enabled("masked"));
+        assert!(!parse_is_enabled("not-found\n"));
+        assert!(!parse_is_enabled(""));
+    }
 
     #[test]
     fn unit_starts_at_boot_and_auto_restarts() {

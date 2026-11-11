@@ -57,12 +57,14 @@ export component AppWindow inherits Window {
     in property <bool> busy: false;
     in property <bool> service-running: false;
     in property <bool> service-installed: false;
+    in-out property <bool> autostart-enabled: false;
 
     callback browse-target();
     callback save-config();
     callback organize-now();
     callback install-service();
     callback uninstall-service();
+    callback set-autostart(bool);
     callback open-config();
     callback open-log();
     callback reset-defaults();
@@ -297,6 +299,13 @@ export component AppWindow inherits Window {
                             enabled: !root.busy;
                             clicked => { root.uninstall-service(); }
                         }
+                    }
+
+                    CheckBox {
+                        text: "Start automatically at boot / login";
+                        checked <=> root.autostart-enabled;
+                        enabled: !root.busy;
+                        toggled => { root.set-autostart(self.checked); }
                     }
                 }
 

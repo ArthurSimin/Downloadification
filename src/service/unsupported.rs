@@ -18,6 +18,14 @@ pub(super) fn is_installed() -> bool {
     false
 }
 
+pub(super) fn is_autostart_enabled() -> bool {
+    false
+}
+
+pub(super) fn set_autostart(_enabled: bool) -> Result<String, String> {
+    Err("Auto-start is not supported on this platform.".to_string())
+}
+
 pub(super) fn detail() -> String {
     "unsupported platform".to_string()
 }

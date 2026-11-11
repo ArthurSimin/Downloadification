@@ -81,6 +81,7 @@ pub(super) fn install(_config: &Config) -> Result<String, String> {
     }
 
     info!("Installed launchd agent {LABEL}");
+    set_disabled_marker(false);
     Ok(format!(
         "Installed launchd LaunchAgent.\n  Plist: {}\n  Binary: {}",
         path.display(),
@@ -99,11 +100,56 @@ pub(super) fn uninstall() -> Result<String, String> {
         .arg(&path)
         .output();
     std::fs::remove_file(&path).map_err(|e| e.to_string())?;
+    set_disabled_marker(false);
     Ok(format!("Uninstalled.\n  removed {}", path.display()))
 }
 
 pub(super) fn is_installed() -> bool {
     plist_path().exists()
+}
+
+/// launchd does not expose a cheap, locale-independent "will this run at
+/// login?" query, so we remember the user's choice in a marker file. Auto-start
+/// is on by default once the agent is installed.
+pub(super) fn is_autostart_enabled() -> bool {
+    plist_path().exists() && !paths::autostart_disabled_marker_file().exists()
+}
+
+pub(super) fn set_autostart(enabled: bool) -> Result<String, String> {
+    let path = plist_path();
+    if !path.exists() {
+        return Err("the LaunchAgent is not installed yet".to_string());
+    }
+    let flag = if enabled { "load" } else { "unload" };
+    let output = Command::new("launchctl")
+        .arg(flag)
+        .arg("-w")
+        .arg(&path)
+        .output()
+        .map_err(|e| format!("could not run launchctl: {e}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "launchctl {flag} failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    set_disabled_marker(!enabled);
+    Ok(if enabled {
+        "Auto-start enabled: the LaunchAgent runs at login.".to_string()
+    } else {
+        "Auto-start disabled: the LaunchAgent stays installed but will not run at login."
+            .to_string()
+    })
+}
+
+fn set_disabled_marker(disabled: bool) {
+    let marker = paths::autostart_disabled_marker_file();
+    if disabled {
+        let _ = paths::ensure_dir(&paths::data_dir());
+        let _ = std::fs::write(&marker, b"disabled\n");
+    } else {
+        let _ = std::fs::remove_file(&marker);
+    }
 }
 
 pub(super) fn detail() -> String {

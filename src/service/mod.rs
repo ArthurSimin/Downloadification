@@ -60,6 +60,8 @@ impl ServiceState {
 #[derive(Debug, Clone)]
 pub struct ServiceInfo {
     pub state: ServiceState,
+    /// True when the service is set to start automatically at boot / login.
+    pub autostart: bool,
     pub detail: String,
 }
 
@@ -86,6 +88,22 @@ pub fn is_installed() -> bool {
     platform::is_installed()
 }
 
+/// True when the service is configured to start automatically at boot / login.
+pub fn is_autostart_enabled() -> bool {
+    platform::is_autostart_enabled()
+}
+
+/// Enable or disable starting the service automatically at boot / login.
+///
+/// The service must already be installed; this only flips the auto-start flag,
+/// so the daemon can be left installed-but-manual when disabled.
+pub fn set_autostart(enabled: bool) -> Result<String, String> {
+    if !platform::is_installed() {
+        return Err("the background service is not installed yet; install it first".to_string());
+    }
+    platform::set_autostart(enabled)
+}
+
 /// Full status, including whether the daemon is currently alive.
 pub fn status() -> ServiceInfo {
     let running = watcher::is_running(Duration::from_secs(30));
@@ -99,6 +117,7 @@ pub fn status() -> ServiceInfo {
     };
     ServiceInfo {
         state,
+        autostart: platform::is_autostart_enabled(),
         detail: platform::detail(),
     }
 }

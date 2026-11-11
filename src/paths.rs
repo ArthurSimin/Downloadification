@@ -67,6 +67,14 @@ pub fn service_marker_file() -> PathBuf {
     data_dir().join("service.installed")
 }
 
+/// Marker file written when auto-start has been explicitly disabled, for
+/// platforms where the service manager cannot be queried in a cheap,
+/// locale-independent way. On those platforms auto-start is treated as enabled
+/// by default once the service is installed.
+pub fn autostart_disabled_marker_file() -> PathBuf {
+    data_dir().join("autostart.disabled")
+}
+
 /// The default Downloads directory for the current user.
 pub fn default_target_dir() -> PathBuf {
     dirs::download_dir().unwrap_or_else(|| home().join("Downloads"))

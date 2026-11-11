@@ -67,6 +67,8 @@ pub(super) fn install(_config: &Config) -> Result<String, String> {
         .output();
 
     mark_installed(true);
+    // A fresh install is always auto-start enabled.
+    set_disabled_marker(false);
     info!("Installed scheduled task {TASK_NAME}");
 
     Ok(format!(
@@ -83,6 +85,7 @@ pub(super) fn uninstall() -> Result<String, String> {
         .map_err(|e| format!("could not run schtasks: {e}"))?;
 
     mark_installed(false);
+    set_disabled_marker(false);
     let _ = std::fs::remove_file(xml_path());
 
     if !output.status.success() {
@@ -105,6 +108,52 @@ pub(super) fn detail() -> String {
         format!("Scheduled Task \"{TASK_NAME}\"")
     } else {
         "no service installed".to_string()
+    }
+}
+
+/// The Scheduled Task XML carries a `<Enabled>true</Enabled>` flag, but reading
+/// it back with `schtasks /Query` means parsing localised text. Instead we
+/// remember the user's choice in a marker file; auto-start is on by default
+/// once the task is installed.
+pub(super) fn is_autostart_enabled() -> bool {
+    is_installed() && !paths::autostart_disabled_marker_file().exists()
+}
+
+pub(super) fn set_autostart(enabled: bool) -> Result<String, String> {
+    if !is_installed() {
+        return Err("the Scheduled Task is not installed yet".to_string());
+    }
+    let verb = if enabled { "/ENABLE" } else { "/DISABLE" };
+    let output = Command::new("schtasks")
+        .args(["/Change", "/TN", TASK_NAME, verb])
+        .output()
+        .map_err(|e| format!("could not run schtasks: {e}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "schtasks {verb} failed: {} {}",
+            String::from_utf8_lossy(&output.stdout).trim(),
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    set_disabled_marker(!enabled);
+    info!(
+        "{} scheduled task {TASK_NAME}",
+        if enabled { "Enabled" } else { "Disabled" }
+    );
+    Ok(if enabled {
+        "Auto-start enabled: the task runs at logon.".to_string()
+    } else {
+        "Auto-start disabled: the task stays registered but will not run at logon.".to_string()
+    })
+}
+
+fn set_disabled_marker(disabled: bool) {
+    let marker = paths::autostart_disabled_marker_file();
+    if disabled {
+        let _ = paths::ensure_dir(&paths::data_dir());
+        let _ = std::fs::write(&marker, b"disabled\n");
+    } else {
+        let _ = std::fs::remove_file(&marker);
     }
 }
 

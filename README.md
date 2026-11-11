@@ -101,7 +101,7 @@ cd Downloadification
 
 This builds the release binaries, installs them to `~/.local/bin`, adds a desktop launcher, and opens the graphical control panel. If you downloaded a release tarball with prebuilt binaries in `./bin`, `install.sh` uses those and does not need Rust.
 
-Then in the GUI click **Install service**. On a normal desktop this creates a systemd user unit (`~/.config/systemd/user/downloadification.service`). If a systemd user session is unavailable, it falls back to an XDG autostart entry.
+Then in the GUI click **Install service**. On a normal desktop this creates a systemd user unit (`~/.config/systemd/user/downloadification.service`). If a systemd user session is unavailable, it falls back to an XDG autostart entry. Use the **Start automatically at boot / login** checkbox (or `downloadification disable` / `enable`) to control whether it comes up at boot without disabling the service itself.
 
 ### macOS
 
@@ -130,7 +130,7 @@ Run `downloadification-gui` (or use the desktop launcher).
 
 - **Folder & behaviour** — pick the target folder, toggle continuous watching, folder organizing and dry-run, and tune the quiet period, sweep interval and minimum file age.
 - **Categories** — edit every category and its extensions, add new ones, remove them, or restore the built-in defaults. Sub-folders use a slash, e.g. `Applications/Windows`.
-- **Background service** — install or uninstall the per-user service with one click, and see whether it is currently watching.
+- **Background service** — install or uninstall the per-user service with one click, see whether it is currently watching, and toggle **Start automatically at boot / login** on or off. Turning it on when no service exists installs it for you.
 - **Recent activity** — a live log, plus buttons to open the config folder or the log file.
 
 ## CLI
@@ -143,6 +143,8 @@ Commands:
   daemon     Watch continuously and organize in the background
   install    Install the background service for the current user
   uninstall  Remove the background service
+  enable     Start the background service automatically at boot / login
+  disable    Stop starting the background service automatically at boot / login
   status     Show configuration and service status
   doctor     Diagnose common problems
   path       Print the configuration file path
