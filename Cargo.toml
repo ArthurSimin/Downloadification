@@ -28,7 +28,7 @@ required-features = ["gui"]
 [features]
 default = ["cli", "gui"]
 cli = ["dep:clap", "dep:chrono"]
-gui = ["dep:slint", "dep:rfd", "dep:chrono"]
+gui = ["dep:slint", "dep:i-slint-common", "dep:rfd", "dep:chrono"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -49,6 +49,10 @@ slint = { version = "1", default-features = false, features = [
     "renderer-software",
     "compat-1-2",
 ], optional = true }
+# Load fontconfig with dlopen instead of linking it. This keeps prebuilt
+# binaries portable across Linux distributions and lets the ARM / 32-bit
+# release builds cross-compile without target fontconfig development files.
+i-slint-common = { version = "1.18", optional = true, features = ["fontconfig-dlopen"] }
 rfd = { version = "0.15", optional = true }
 
 [build-dependencies]
