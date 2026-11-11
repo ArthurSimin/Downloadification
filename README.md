@@ -2,7 +2,7 @@
 
 > Automatically organize your Downloads folder into tidy, categorized folders — now written in Rust, with a graphical control panel and a headless daemon.
 
-[![CI](https://github.com/arthursimao/Downloadification/actions/workflows/ci.yml/badge.svg)](https://github.com/arthursimao/Downloadification/actions/workflows/ci.yml)
+[![CI](https://github.com/ArthurSimin/Downloadification/actions/workflows/ci.yml/badge.svg)](https://github.com/ArthurSimin/Downloadification/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ![Downloadification control panel](assets/screenshot.png)
@@ -80,7 +80,7 @@ You are not limited to these — see [Configuration](#configuration).
 
 ### Windows (no PowerShell)
 
-1. Download `downloadification-windows-x86_64.zip` from the [Releases](https://github.com/arthursimao/Downloadification/releases) page.
+1. Download `downloadification-windows-x86_64.zip` from the [Releases](https://github.com/ArthurSimin/Downloadification/releases) page.
 2. Extract it anywhere (for example `%LOCALAPPDATA%\Downloadification`).
 3. Run **`downloadification-gui.exe`**.
 4. Choose the folder (the default is your Downloads folder) and click **Install service**.
@@ -94,7 +94,7 @@ To remove it, click **Uninstall service** in the GUI.
 ### Linux
 
 ```bash
-git clone https://github.com/arthursimao/Downloadification.git
+git clone https://github.com/ArthurSimin/Downloadification.git
 cd Downloadification
 ./install.sh
 ```
@@ -106,7 +106,7 @@ Then in the GUI click **Install service**. On a normal desktop this creates a sy
 ### macOS
 
 ```bash
-git clone https://github.com/arthursimao/Downloadification.git
+git clone https://github.com/ArthurSimin/Downloadification.git
 cd Downloadification
 ./install.sh
 ```

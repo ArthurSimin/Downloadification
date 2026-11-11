@@ -48,7 +48,7 @@ fn unit_contents(bin: &str) -> String {
     format!(
         "[Unit]\n\
          Description=Downloadification - automatic Downloads organizer\n\
-         Documentation=https://github.com/arthursimao/Downloadification\n\
+         Documentation=https://github.com/ArthurSimin/Downloadification\n\
          After=default.target\n\n\
          [Service]\n\
          Type=simple\n\
