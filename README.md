@@ -7,7 +7,7 @@
 
 ![Downloadification control panel](assets/screenshot.png)
 
-## What's new in v2
+## Highlights
 
 This is a ground-up rewrite. The old Bash + PowerShell scripts are gone.
 
@@ -78,9 +78,24 @@ You are not limited to these — see [Configuration](#configuration).
 
 ## Install
 
+Prebuilt packages for every supported architecture are published on the
+[Releases](https://github.com/ArthurSimin/Downloadification/releases/latest) page:
+
+| Platform | Architecture | Package |
+|---|---|---|
+| Windows | x64 / x86-64 | `downloadification-windows-x86_64.zip` |
+| Windows | x86 (32-bit) | `downloadification-windows-i686.zip` |
+| Windows | ARM64 | `downloadification-windows-aarch64.zip` |
+| Linux | x64 / x86-64 | `downloadification-linux-x86_64.tar.gz` |
+| Linux | x86 (32-bit) | `downloadification-linux-i686.tar.gz` |
+| Linux | ARM64 / aarch64 | `downloadification-linux-aarch64.tar.gz` |
+| Linux | ARMv7 (32-bit) | `downloadification-linux-armv7.tar.gz` |
+| macOS | Apple Silicon | `downloadification-macos-aarch64.tar.gz` |
+| macOS | Intel | `downloadification-macos-x86_64.tar.gz` |
+
 ### Windows (no PowerShell)
 
-1. Download `downloadification-windows-x86_64.zip` from the [Releases](https://github.com/ArthurSimin/Downloadification/releases) page.
+1. Download the `.zip` for your architecture from the [Releases](https://github.com/ArthurSimin/Downloadification/releases) page.
 2. Extract it anywhere (for example `%LOCALAPPDATA%\Downloadification`).
 3. Run **`downloadification-gui.exe`**.
 4. Choose the folder (the default is your Downloads folder) and click **Install service**.
@@ -93,13 +108,23 @@ To remove it, click **Uninstall service** in the GUI.
 
 ### Linux
 
+Download the tarball for your architecture from [Releases](https://github.com/ArthurSimin/Downloadification/releases/latest), then:
+
+```bash
+tar -xzf downloadification-linux-x86_64.tar.gz   # replace with your architecture
+cd downloadification-linux-x86_64
+./install.sh
+```
+
+Or build from source:
+
 ```bash
 git clone https://github.com/ArthurSimin/Downloadification.git
 cd Downloadification
 ./install.sh
 ```
 
-This builds the release binaries, installs them to `~/.local/bin`, adds a desktop launcher, and opens the graphical control panel. If you downloaded a release tarball with prebuilt binaries in `./bin`, `install.sh` uses those and does not need Rust.
+`install.sh` installs the binaries to `~/.local/bin`, adds a desktop launcher, and opens the graphical control panel. When the package already contains prebuilt binaries in `./bin`, Rust is not required.
 
 Then in the GUI click **Install service**. On a normal desktop this creates a systemd user unit (`~/.config/systemd/user/downloadification.service`). If a systemd user session is unavailable, it falls back to an XDG autostart entry. Use the **Start automatically at boot / login** checkbox (or `downloadification disable` / `enable`) to control whether it comes up at boot without disabling the service itself.
 

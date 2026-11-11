@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   build:
     name: Build (${{ matrix.artifact }})
@@ -15,18 +18,54 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            artifact: downloadification-windows-x86_64
+          # ---------------------------------------------------------- Linux
+          # x86-64 / x64 — native runner
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact: downloadification-linux-x86_64
-          - os: macos-13
+            cross: false
+          # x86 (32-bit) — cross-compiled with cross
+          - os: ubuntu-latest
+            target: i686-unknown-linux-gnu
+            artifact: downloadification-linux-i686
+            cross: true
+          # ARM64 / aarch64 — native ARM runner
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            artifact: downloadification-linux-aarch64
+            cross: false
+          # ARM 32-bit (ARMv7) — cross-compiled with cross
+          - os: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+            artifact: downloadification-linux-armv7
+            cross: true
+
+          # -------------------------------------------------------- Windows
+          # x86-64 / x64 — native runner
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: downloadification-windows-x86_64
+            cross: false
+          # x86 (32-bit) — installed x86 MSVC toolchain
+          - os: windows-latest
+            target: i686-pc-windows-msvc
+            artifact: downloadification-windows-i686
+            cross: false
+          # ARM64 — native ARM runner
+          - os: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            artifact: downloadification-windows-aarch64
+            cross: false
+
+          # ---------------------------------------------------------- macOS
+          - os: macos-15-intel
             target: x86_64-apple-darwin
             artifact: downloadification-macos-x86_64
+            cross: false
           - os: macos-latest
             target: aarch64-apple-darwin
             artifact: downloadification-macos-aarch64
+            cross: false
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -37,7 +76,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Install Linux GUI dependencies
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && matrix.cross != true
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -45,10 +84,27 @@ jobs:
             libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
             libfontconfig1-dev libgl1-mesa-dev
 
-      - uses: Swatinem/rust-cache@v2
+      - name: Install cross
+        if: matrix.cross == true
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
 
-      - name: Build release binaries
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Build release binaries (native)
+        if: matrix.cross != true
         run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Build release binaries (cross)
+        if: matrix.cross == true
+        run: cross build --release --locked --target ${{ matrix.target }}
+
+      - name: Show binary info
+        if: runner.os != 'Windows'
+        run: file "target/${{ matrix.target }}/release/downloadification" "target/${{ matrix.target }}/release/downloadification-gui"
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
@@ -58,7 +114,7 @@ jobs:
           Copy-Item "target/${{ matrix.target }}/release/downloadification.exe" dist/
           Copy-Item "target/${{ matrix.target }}/release/downloadification-gui.exe" dist/
           Copy-Item README.md, LICENSE dist/
-          Copy-Item config/config.toml dist/config.example.toml
+          Copy-Item config/config.toml "dist/config.example.toml"
           Compress-Archive -Path dist/* -DestinationPath "${{ matrix.artifact }}.zip"
 
       - name: Package (Linux / macOS)
@@ -69,13 +125,13 @@ jobs:
           cp "target/${{ matrix.target }}/release/downloadification" dist/bin/
           cp "target/${{ matrix.target }}/release/downloadification-gui" dist/bin/
           cp -r config assets install.sh uninstall.sh README.md LICENSE dist/
-          chmod +x dist/install.sh dist/uninstall.sh
+          chmod +x dist/install.sh dist/uninstall.sh dist/bin/*
           tar -czf "${{ matrix.artifact }}.tar.gz" -C dist .
 
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          if-no-files-found: ignore
+          if-no-files-found: error
           path: |
             ${{ matrix.artifact }}.zip
             ${{ matrix.artifact }}.tar.gz
@@ -98,5 +154,7 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
+          name: Downloadification ${{ github.ref_name }}
           files: release/*
           generate_release_notes: true
+          fail_on_unmatched_files: true
