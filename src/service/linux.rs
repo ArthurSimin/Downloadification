@@ -48,8 +48,7 @@ fn unit_contents(bin: &str) -> String {
     format!(
         "[Unit]\n\
          Description=Downloadification - automatic Downloads organizer\n\
-         Documentation=https://github.com/ArthurSimin/Downloadification\n\
-         After=default.target\n\n\
+         Documentation=https://github.com/ArthurSimin/Downloadification\n\n\
          [Service]\n\
          Type=simple\n\
          ExecStart={bin} daemon\n\
@@ -161,5 +160,39 @@ pub(super) fn detail() -> String {
         format!("XDG autostart entry at {}", autostart_path().display())
     } else {
         "no service installed".to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unit_starts_at_boot_and_auto_restarts() {
+        let unit = unit_contents("/home/u/.local/bin/downloadification");
+
+        // Enabled at boot via the standard user target.
+        assert!(unit.contains("WantedBy=default.target"));
+        assert!(unit.contains("ExecStart=/home/u/.local/bin/downloadification daemon"));
+        assert!(unit.contains("Restart=on-failure"));
+
+        // Must NOT be ordered after default.target: combined with
+        // WantedBy=default.target that forms an ordering cycle which systemd
+        // breaks by deleting the start job, so the service would silently not
+        // start at boot.
+        assert!(!unit.contains("After=default.target"));
+    }
+
+    #[test]
+    fn unit_quotes_paths_with_spaces() {
+        let unit = unit_contents("/home/a b/bin/downloadification");
+        assert!(unit.contains("ExecStart=\"/home/a b/bin/downloadification\" daemon"));
+    }
+
+    #[test]
+    fn autostart_entry_runs_the_daemon() {
+        let entry = autostart_contents("/home/u/.local/bin/downloadification");
+        assert!(entry.contains("Exec=/home/u/.local/bin/downloadification daemon"));
+        assert!(entry.contains("[Desktop Entry]"));
     }
 }
