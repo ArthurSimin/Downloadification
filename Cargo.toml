@@ -1,0 +1,70 @@
+[package]
+name = "downloadification"
+version = "2.0.0"
+edition = "2021"
+rust-version = "1.92"
+description = "Automatically organize your Downloads folder into categorized subfolders"
+authors = ["Arthur Simao"]
+license = "MIT"
+repository = "https://github.com/arthursimao/Downloadification"
+readme = "README.md"
+keywords = ["downloads", "organizer", "files", "cli", "gui"]
+categories = ["command-line-utilities", "filesystem"]
+
+[lib]
+name = "downloadification"
+path = "src/lib.rs"
+
+[[bin]]
+name = "downloadification"
+path = "src/bin/cli.rs"
+required-features = ["cli"]
+
+[[bin]]
+name = "downloadification-gui"
+path = "src/bin/gui.rs"
+required-features = ["gui"]
+
+[features]
+default = ["cli", "gui"]
+cli = ["dep:clap", "dep:chrono"]
+gui = ["dep:slint", "dep:rfd", "dep:chrono"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+notify = "7"
+dirs = "6"
+globset = "0.4"
+log = "0.4"
+
+clap = { version = "4", features = ["derive"], optional = true }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"], optional = true }
+
+slint = { version = "1", default-features = false, features = [
+    "std",
+    "backend-winit",
+    "backend-winit-x11",
+    "backend-winit-wayland",
+    "renderer-software",
+    "compat-1-2",
+], optional = true }
+rfd = { version = "0.15", optional = true }
+
+[build-dependencies]
+slint-build = "1"
+
+[dev-dependencies]
+roxmltree = "0.20"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_System_Console",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

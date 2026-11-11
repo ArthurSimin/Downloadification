@@ -1,0 +1,72 @@
+# ============================================================================
+#  Downloadification configuration
+# ============================================================================
+# Edit this file directly, or use the graphical control panel:
+#     downloadification-gui
+# ============================================================================
+
+# Folder to organize. Leave empty to use your platform Downloads folder.
+# A leading `~` is expanded to your home directory.
+target_dir = ""
+
+# Watch the folder continuously in the background (daemon mode).
+watch = true
+
+# Log what would happen without moving anything.
+dry_run = false
+
+# Move loose folders into `folders_category`.
+organize_folders = true
+folders_category = "Folders"
+unknown_category = "Unknown"
+
+# Skip dot-files and dot-folders.
+ignore_hidden = true
+
+# Milliseconds of quiet before the watcher reacts to a change.
+settle_time_ms = 3000
+
+# Full backup scan interval, in seconds. The daemon always sweeps, so a file
+# is never missed even if a filesystem event is dropped.
+sweep_interval_secs = 60
+
+# Ignore files modified more recently than this (milliseconds). Protects
+# against moving a file that is still being written.
+min_file_age_ms = 1500
+
+# trace | debug | info | warn | error
+log_level = "info"
+
+# Glob patterns treated as in-progress downloads.
+ignore = [
+    "*.crdownload",
+    "*.part",
+    "*.partial",
+    "*.download",
+    "*.opdownload",
+    "*.filepart",
+    "*.!ut",
+    "*.aria2",
+    "*.tmp",
+    "*.temp",
+]
+
+# Built-in categories to switch off, by name.
+disable_categories = []
+
+# When true, the [categories] table replaces the built-in set instead of
+# extending it. The control panel sets this so that deletions stick.
+replace_categories = false
+
+# ----------------------------------------------------------------------------
+# Custom / extended categories (optional)
+# ----------------------------------------------------------------------------
+# Merging rules:
+#   * a name matching a built-in category replaces that category's list,
+#   * any other name adds a new category,
+#   * sub-folders use a slash, e.g. "Applications/Windows".
+#
+# [categories]
+# Images = ["png", "jpg", "jpeg", "gif", "webp", "avif", "heic"]
+# "Applications/Windows" = ["exe", "msi", "msix"]
+# Screenshots = ["screenshot", "snip"]

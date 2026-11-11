@@ -1,0 +1,357 @@
+// Downloadification — graphical control panel.
+//
+// A single cross-platform UI (Slint) that installs and manages the background
+// service. It shares every piece of logic with the headless CLI.
+
+import { Button, CheckBox, LineEdit, ListView, ScrollView, SpinBox } from "std-widgets.slint";
+
+export struct CategoryRow {
+    name: string,
+    exts: string,
+}
+
+component Card inherits Rectangle {
+    in property <string> title: "";
+    border-radius: 10px;
+    background: #1b1f27;
+    border-width: 1px;
+    border-color: #272c38;
+
+    VerticalLayout {
+        padding: 16px;
+        spacing: 12px;
+
+        Text {
+            text: root.title;
+            color: #e7ecf6;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        @children
+    }
+}
+
+export component AppWindow inherits Window {
+    title: "Downloadification";
+    width: 940px;
+    height: 780px;
+    background: #14161a;
+    default-font-size: 14px;
+
+    in property <string> app-version: "2.0.0";
+
+    in-out property <string> target-dir: "";
+    in-out property <bool> watch-enabled: true;
+    in-out property <bool> dry-run: false;
+    in-out property <bool> organize-folders: true;
+    in-out property <int> settle-ms: 3000;
+    in-out property <int> sweep-secs: 60;
+    in-out property <int> min-age-ms: 1500;
+
+    in property <[CategoryRow]> categories: [];
+    in property <[string]> log-lines: [];
+
+    in property <string> message: "";
+    in property <string> service-text: "";
+    in property <bool> busy: false;
+    in property <bool> service-running: false;
+    in property <bool> service-installed: false;
+
+    callback browse-target();
+    callback save-config();
+    callback organize-now();
+    callback install-service();
+    callback uninstall-service();
+    callback open-config();
+    callback open-log();
+    callback reset-defaults();
+    callback add-category();
+    callback remove-category(int);
+    callback rename-category(int, string);
+    callback edit-category-exts(int, string);
+    callback poll();
+
+    Timer {
+        interval: 800ms;
+        running: true;
+        triggered => { root.poll(); }
+    }
+
+    VerticalLayout {
+        padding: 18px;
+        spacing: 14px;
+
+        // ---------------------------------------------------------------- header
+        HorizontalLayout {
+            spacing: 12px;
+
+            VerticalLayout {
+                alignment: start;
+                spacing: 2px;
+                Text {
+                    text: "Downloadification";
+                    color: #ffffff;
+                    font-size: 26px;
+                    font-weight: 700;
+                }
+                Text {
+                    text: "Automatic Downloads organizer  ·  v" + root.app-version;
+                    color: #8b93a7;
+                    font-size: 13px;
+                }
+            }
+
+            Rectangle { horizontal-stretch: 1; }
+
+            Rectangle {
+                border-radius: 14px;
+                border-width: 1px;
+                background: root.service-running ? #12351f : (root.service-installed ? #332c12 : #24272f);
+                border-color: root.service-running ? #2f9e66 : (root.service-installed ? #a98a2a : #3a3f4b);
+                HorizontalLayout {
+                    padding-left: 14px;
+                    padding-right: 14px;
+                    padding-top: 7px;
+                    padding-bottom: 7px;
+                    Text {
+                        text: root.service-running ? "● Watching" : (root.service-installed ? "● Installed" : "○ Not installed");
+                        color: root.service-running ? #6ee7a8 : (root.service-installed ? #e8c96a : #aab3c5);
+                        font-size: 13px;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+
+        // --------------------------------------------------------------- content
+        ScrollView {
+            VerticalLayout {
+                spacing: 14px;
+
+                // ---------------- folder
+                Card {
+                    title: "Folder & behaviour";
+
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Text {
+                            text: "Folder";
+                            width: 110px;
+                            color: #aeb7c8;
+                            vertical-alignment: center;
+                        }
+                        LineEdit {
+                            text: root.target-dir;
+                            placeholder-text: "System default (Downloads)";
+                            horizontal-stretch: 1;
+                            edited(value) => { root.target-dir = value; }
+                        }
+                        Button {
+                            text: "Browse…";
+                            enabled: !root.busy;
+                            clicked => { root.browse-target(); }
+                        }
+                    }
+
+                    CheckBox {
+                        text: "Watch the folder continuously in the background";
+                        checked: root.watch-enabled;
+                        toggled => { root.watch-enabled = self.checked; }
+                    }
+                    CheckBox {
+                        text: "Move loose folders into the \"Folders\" category";
+                        checked: root.organize-folders;
+                        toggled => { root.organize-folders = self.checked; }
+                    }
+                    CheckBox {
+                        text: "Dry run — log what would happen without moving anything";
+                        checked: root.dry-run;
+                        toggled => { root.dry-run = self.checked; }
+                    }
+
+                    HorizontalLayout {
+                        spacing: 10px;
+                        Text {
+                            text: "Quiet period";
+                            width: 110px;
+                            color: #aeb7c8;
+                            vertical-alignment: center;
+                        }
+                        SpinBox {
+                            value: root.settle-ms;
+                            minimum: 0;
+                            maximum: 60000;
+                            edited(value) => { root.settle-ms = value; }
+                        }
+                        Text { text: "ms before reacting to changes"; color: #6f788b; vertical-alignment: center; }
+                    }
+                    HorizontalLayout {
+                        spacing: 10px;
+                        Text {
+                            text: "Backup sweep";
+                            width: 110px;
+                            color: #aeb7c8;
+                            vertical-alignment: center;
+                        }
+                        SpinBox {
+                            value: root.sweep-secs;
+                            minimum: 5;
+                            maximum: 86400;
+                            edited(value) => { root.sweep-secs = value; }
+                        }
+                        Text { text: "seconds between full scans"; color: #6f788b; vertical-alignment: center; }
+                    }
+                    HorizontalLayout {
+                        spacing: 10px;
+                        Text {
+                            text: "Minimum age";
+                            width: 110px;
+                            color: #aeb7c8;
+                            vertical-alignment: center;
+                        }
+                        SpinBox {
+                            value: root.min-age-ms;
+                            minimum: 0;
+                            maximum: 60000;
+                            edited(value) => { root.min-age-ms = value; }
+                        }
+                        Text { text: "ms — ignores files still being written"; color: #6f788b; vertical-alignment: center; }
+                    }
+                }
+
+                // ---------------- categories
+                Card {
+                    title: "Categories";
+
+                    Text {
+                        text: "One row per folder. Extensions are separated by spaces (multi-dot like tar.gz is supported). Sub-folders use a slash, e.g. Applications/Windows.";
+                        color: #7f889b;
+                        font-size: 12px;
+                        wrap: word-wrap;
+                    }
+
+                    ListView {
+                        height: 300px;
+                        for row[i] in root.categories : Rectangle {
+                            height: 42px;
+                            HorizontalLayout {
+                                spacing: 8px;
+                                LineEdit {
+                                    text: row.name;
+                                    width: 200px;
+                                    edited(value) => { root.rename-category(i, value); }
+                                }
+                                LineEdit {
+                                    text: row.exts;
+                                    horizontal-stretch: 1;
+                                    edited(value) => { root.edit-category-exts(i, value); }
+                                }
+                                Button {
+                                    text: "Remove";
+                                    clicked => { root.remove-category(i); }
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Button {
+                            text: "+ Add category";
+                            clicked => { root.add-category(); }
+                        }
+                        Button {
+                            text: "Restore built-in defaults";
+                            clicked => { root.reset-defaults(); }
+                        }
+                    }
+                }
+
+                // ---------------- service
+                Card {
+                    title: "Background service";
+
+                    Text {
+                        text: root.service-text;
+                        color: #aeb7c8;
+                        font-size: 13px;
+                        wrap: word-wrap;
+                    }
+                    Text {
+                        text: "Install a per-user service that keeps the folder organized automatically. On Linux this is a systemd user unit (or an XDG autostart entry); on macOS a LaunchAgent; on Windows a Scheduled Task. No scripts required.";
+                        color: #7f889b;
+                        font-size: 12px;
+                        wrap: word-wrap;
+                    }
+
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Button {
+                            text: "Install service";
+                            enabled: !root.busy;
+                            clicked => { root.install-service(); }
+                        }
+                        Button {
+                            text: "Uninstall service";
+                            enabled: !root.busy;
+                            clicked => { root.uninstall-service(); }
+                        }
+                    }
+                }
+
+                // ---------------- activity
+                Card {
+                    title: "Recent activity";
+
+                    ListView {
+                        height: 220px;
+                        for line in root.log-lines : Text {
+                            text: line;
+                            color: #9aa4b8;
+                            font-size: 11px;
+                            wrap: word-wrap;
+                        }
+                    }
+
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Button {
+                            text: "Open config folder";
+                            clicked => { root.open-config(); }
+                        }
+                        Button {
+                            text: "Open log file";
+                            clicked => { root.open-log(); }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ---------------------------------------------------------------- footer
+        HorizontalLayout {
+            spacing: 10px;
+
+            Button {
+                text: "Save settings";
+                enabled: !root.busy;
+                clicked => { root.save-config(); }
+            }
+            Button {
+                text: root.busy ? "Working…" : "Organize now";
+                enabled: !root.busy;
+                clicked => { root.organize-now(); }
+            }
+
+            Text {
+                text: root.message;
+                color: #8b93a7;
+                font-size: 12px;
+                horizontal-stretch: 1;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
+    }
+}

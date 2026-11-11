@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Downloadification
+GenericName=Downloads Organizer
+Comment=Automatically organize your Downloads folder
+Exec=downloadification-gui
+Icon=downloadification
+Terminal=false
+Categories=Utility;FileTools;
+Keywords=downloads;organize;files;sort;
+StartupNotify=true
+StartupWMClass=downloadification-gui
